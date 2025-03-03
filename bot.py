@@ -1,6 +1,9 @@
 from pyrogram import Client, filters
 from pymongo import MongoClient
 import os
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 # Load from environment variables
 API_ID = int(os.getenv("API_ID"))
