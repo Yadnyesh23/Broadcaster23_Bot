@@ -41,19 +41,19 @@ def start(client, message):
 @bot.on_message(filters.command("setmsg"))
 def set_welcome_message(client, message):
     if not is_admin(message.from_user.id):
-        return message.reply_text("❌ You are not an admin.")
+        return message.reply_text("You are not an admin.")
 
     new_message = message.text.split(" ", 1)[1] if len(message.text.split()) > 1 else None
     if new_message:
         settings_collection.update_one({"_id": "welcome_msg"}, {"$set": {"message": new_message}}, upsert=True)
-        message.reply_text("✅ Welcome message updated!")
+        message.reply_text("Welcome message updated!")
     else:
-        message.reply_text("❌ Please provide a new message.")
+        message.reply_text("Please provide a new message.")
 
 @bot.on_message(filters.command("broadcast"))
 def broadcast(client, message):
     if not is_admin(message.from_user.id):
-        return message.reply_text("❌ You are not an admin.")
+        return message.reply_text("You are not an admin.")
 
     text = message.text.split(" ", 1)[1] if len(message.text.split()) > 1 else None
     if text:
@@ -65,6 +65,6 @@ def broadcast(client, message):
                 count += 1
             except:
                 pass
-        message.reply_text(f"✅ Broadcast sent to {count} users.")
+        message.reply_text(f"Broadcast sent to {count} users.")
     else:
-        message.reply_text("❌ Please provide a message to broadcast.")
+        message.reply_text("Please provide a message to broadcast.")
