@@ -7,61 +7,42 @@ API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 MONGO_URI = os.getenv("MONGO_URI")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))  # Your Telegram ID
 
 # Connect to MongoDB
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client["telegram_bot"]
 users_collection = db["users"]
 settings_collection = db["settings"]
-admin_collection = db["admins"]  # ✅ Now using this for admins
 
 # Initialize Pyrogram Client
 bot = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Function to check if a user is an admin
-def is_admin(user_id):
-    return admin_collection.find_one({"_id": user_id}) is not None  # ✅ More efficient
+# Function to get welcome message
+def get_welcome_message():
+    msg_data = settings_collection.find_one({"_id": "welcome_msg"})
+    return msg_data["message"] if msg_data else "Welcome to the bot!"
 
-# Add a new admin (Command: /addadmin user_id)
-@bot.on_message(filters.command("addadmin"))
-def add_admin(client, message):
-    sender_id = message.from_user.id
-
-    if not is_admin(sender_id):
-        return message.reply_text("❌ You are not authorized to add admins.")
-
-    parts = message.text.split(" ", 1)
-    if len(parts) < 2 or not parts[1].isdigit():
-        return message.reply_text("❌ Please provide a valid user ID.")
-
-    new_admin_id = int(parts[1])
-
-    if is_admin(new_admin_id):
-        return message.reply_text("⚠️ This user is already an admin.")
-
-    try:
-        admin_collection.insert_one({"_id": new_admin_id})  # ✅ Store admins correctly
-        message.reply_text(f"✅ User {new_admin_id} has been added as an admin!")
-    except Exception as e:
-        message.reply_text("❌ Database error while adding admin.")
-        print(f"Error: {e}")
+# Bot Activation - Send welcome message on /start
+@bot.on_message(filters.command("start"))
+def start(client, message):
+    user_id = message.from_user.id
+    users_collection.update_one({"_id": user_id}, {"$set": {"id": user_id}}, upsert=True)
+    welcome_msg = get_welcome_message()
+    message.reply_text(welcome_msg)
 
 # Admin - Set Custom Welcome Message
-@bot.on_message(filters.command("setmsg") & filters.create(lambda _, __, message: is_admin(message.from_user.id)))
+@bot.on_message(filters.command("setmsg") & filters.user(ADMIN_ID))
 def set_welcome_message(client, message):
     new_message = message.text.split(" ", 1)[1] if len(message.text.split()) > 1 else None
     if new_message:
-        try:
-            settings_collection.update_one({"_id": "welcome_msg"}, {"$set": {"message": new_message}}, upsert=True)
-            message.reply_text("✅ Welcome message updated!")
-        except Exception as e:
-            message.reply_text("❌ Database error while updating message.")
-            print(f"Error: {e}")
+        settings_collection.update_one({"_id": "welcome_msg"}, {"$set": {"message": new_message}}, upsert=True)
+        message.reply_text("✅ Welcome message updated!")
     else:
         message.reply_text("❌ Please provide a new message.")
 
 # Admin - Broadcast Message
-@bot.on_message(filters.command("broadcast") & filters.create(lambda _, __, message: is_admin(message.from_user.id)))
+@bot.on_message(filters.command("broadcast") & filters.user(ADMIN_ID))
 def broadcast(client, message):
     text = message.text.split(" ", 1)[1] if len(message.text.split()) > 1 else None
     if text:
