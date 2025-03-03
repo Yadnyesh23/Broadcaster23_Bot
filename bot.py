@@ -36,21 +36,29 @@ def start(client, message):
     msg_data = settings_collection.find_one({"_id": "welcome_msg"})
     welcome_msg = msg_data["message"] if msg_data else "Welcome to the bot!"
 
-# Add admins  
+#Add admin
 @bot.on_message(filters.command("addadmin"))
 def add_admin(client, message):
-    if not is_admin(message.from_user.id):  # Only existing admins can add new admins
-        return message.reply_text("You are not authorized to use this command.")
+    if not is_admin(message.from_user.id):  
+        message.reply_text("You are not authorized to use this command.")
+        print(f"Unauthorized user {message.from_user.id} tried to add an admin.")
+        return
 
     try:
-        new_admin_id = int(message.text.split()[1])  # Extract user ID from command
+        new_admin_id = int(message.text.split()[1])  
         if is_admin(new_admin_id):
-            return message.reply_text("User is already an admin.")
+            message.reply_text("User is already an admin.")
+            print(f"User {new_admin_id} is already an admin.")
+            return
         
-        admins_collection.insert_one({"_id": new_admin_id})  # Add to MongoDB
-        message.reply_text(f"Added {new_admin_id} as an admin.")
-    except:
+        admins_collection.insert_one({"_id": new_admin_id})  
+        message.reply_text(f"✅ Added {new_admin_id} as an admin.")
+        print(f"New admin {new_admin_id} added successfully.")
+    
+    except Exception as e:
         message.reply_text("Invalid ID. Use: /addadmin <user_id>")
+        print(f"Error adding admin: {str(e)}")
+
 
 #Remove admins
 @bot.on_message(filters.command("removeadmin"))
