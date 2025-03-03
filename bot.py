@@ -36,7 +36,7 @@ def start(client, message):
     msg_data = settings_collection.find_one({"_id": "welcome_msg"})
     welcome_msg = msg_data["message"] if msg_data else "Welcome to the bot!"
 
-    message.reply_text(welcome_msg)
+    
 
 @bot.on_message(filters.command("setmsg"))
 def set_welcome_message(client, message):
