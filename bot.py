@@ -36,7 +36,50 @@ def start(client, message):
     msg_data = settings_collection.find_one({"_id": "welcome_msg"})
     welcome_msg = msg_data["message"] if msg_data else "Welcome to the bot!"
 
-    
+# Add admins  
+@bot.on_message(filters.command("addadmin"))
+def add_admin(client, message):
+    if not is_admin(message.from_user.id):  # Only existing admins can add new admins
+        return message.reply_text("You are not authorized to use this command.")
+
+    try:
+        new_admin_id = int(message.text.split()[1])  # Extract user ID from command
+        if is_admin(new_admin_id):
+            return message.reply_text("User is already an admin.")
+        
+        admins_collection.insert_one({"_id": new_admin_id})  # Add to MongoDB
+        message.reply_text(f"Added {new_admin_id} as an admin.")
+    except:
+        message.reply_text("Invalid ID. Use: /addadmin <user_id>")
+
+#Remove admins
+@bot.on_message(filters.command("removeadmin"))
+def remove_admin(client, message):
+    if not is_admin(message.from_user.id):  # Only admins can remove other admins
+        return message.reply_text("You are not authorized to use this command.")
+
+    try:
+        remove_admin_id = int(message.text.split()[1])  # Extract user ID
+        if not is_admin(remove_admin_id):
+            return message.reply_text("User is not an admin.")
+        
+        admins_collection.delete_one({"_id": remove_admin_id})  # Remove from MongoDB
+        message.reply_text(f"Removed {remove_admin_id} from admin list.")
+    except:
+        message.reply_text("Invalid ID. Use: /removeadmin <user_id>")
+
+#Listadmins
+@bot.on_message(filters.command("listadmins"))
+def list_admins(client, message):
+    admin_list = admins_collection.find()
+    admins = [str(admin["_id"]) for admin in admin_list]
+
+    if admins:
+        message.reply_text("Admins:\n" + "\n".join(admins))
+    else:
+        message.reply_text("No admins found.")
+
+
 
 @bot.on_message(filters.command("setmsg"))
 def set_welcome_message(client, message):
