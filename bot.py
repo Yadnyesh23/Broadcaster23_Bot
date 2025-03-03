@@ -13,18 +13,14 @@ mongo_client = MongoClient(MONGO_URI)
 db = mongo_client["telegram_bot"]
 users_collection = db["users"]
 settings_collection = db["settings"]
+admin_collection = db["admins"]  # ✅ Now using this for admins
 
 # Initialize Pyrogram Client
 bot = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Function to get current admin IDs
-def get_admins():
-    admin_data = settings_collection.find_one({"_id": "admins"})
-    return admin_data["admin_ids"] if admin_data else []
-
 # Function to check if a user is an admin
 def is_admin(user_id):
-    return user_id in get_admins()
+    return admin_collection.find_one({"_id": user_id}) is not None  # ✅ More efficient
 
 # Add a new admin (Command: /addadmin user_id)
 @bot.on_message(filters.command("addadmin"))
@@ -39,23 +35,28 @@ def add_admin(client, message):
         return message.reply_text("❌ Please provide a valid user ID.")
 
     new_admin_id = int(parts[1])
-    current_admins = get_admins()
 
-    if new_admin_id in current_admins:
+    if is_admin(new_admin_id):
         return message.reply_text("⚠️ This user is already an admin.")
 
-    current_admins.append(new_admin_id)
-    settings_collection.update_one({"_id": "admins"}, {"$set": {"admin_ids": current_admins}}, upsert=True)
-
-    message.reply_text(f"✅ User {new_admin_id} has been added as an admin!")
+    try:
+        admin_collection.insert_one({"_id": new_admin_id})  # ✅ Store admins correctly
+        message.reply_text(f"✅ User {new_admin_id} has been added as an admin!")
+    except Exception as e:
+        message.reply_text("❌ Database error while adding admin.")
+        print(f"Error: {e}")
 
 # Admin - Set Custom Welcome Message
 @bot.on_message(filters.command("setmsg") & filters.create(lambda _, __, message: is_admin(message.from_user.id)))
 def set_welcome_message(client, message):
     new_message = message.text.split(" ", 1)[1] if len(message.text.split()) > 1 else None
     if new_message:
-        settings_collection.update_one({"_id": "welcome_msg"}, {"$set": {"message": new_message}}, upsert=True)
-        message.reply_text("✅ Welcome message updated!")
+        try:
+            settings_collection.update_one({"_id": "welcome_msg"}, {"$set": {"message": new_message}}, upsert=True)
+            message.reply_text("✅ Welcome message updated!")
+        except Exception as e:
+            message.reply_text("❌ Database error while updating message.")
+            print(f"Error: {e}")
     else:
         message.reply_text("❌ Please provide a new message.")
 
